@@ -7,8 +7,15 @@ Implemented in `Clojure` with `Aleph` and `Netty`. Mostly as an example. It's st
 Run in the directory you want to serve:
 
 ```shell
-clj -Sdeps '{:mvn/version {"nasus" "0.1.0"}}' -m http.server
+$ clj -Sdeps '{:deps {nasus {:mvn/version "0.1.0"}}}' -m http.server
 ```
+
+Or specify custom port:
+
+```shell
+$ clj -Sdeps '{:deps {nasus {:mvn/version "0.1.0"}}}' -m http.server 8001
+```
+
 ## Features
 
 * Plain text & HTML directory listings based on "Accept" header
@@ -35,3 +42,7 @@ TBD
 Copyright © 2019 Nasus
 
 Nasus is licensed under the MIT license, available at MIT and also in the LICENSE file.
+
+## Nasus
+
+![Nasus](https://github.com/kachayev/nasus/tree/master/docs/logo/nasus.jpg)

@@ -305,7 +305,7 @@
                          wrap-logging)
             s (http/start-server handler {:port port
                                           :compression? true
-                                          ;; ile operations are blocking,
+                                          ;; file operations are blocking,
                                           ;; nevertheless the directory listing
                                           ;; is fast enought to be done on I/O
                                           ;; threads and reading/sending files

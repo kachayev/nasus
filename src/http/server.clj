@@ -4,7 +4,8 @@
             [manifold.deferred :as d]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [clojure.tools.cli :as cli])
   (:import [java.io File]
            [java.net URLDecoder]
            [java.util Date Locale TimeZone]
@@ -118,12 +119,13 @@
           not-modified
           (inject-cache-headers response))))))
 
-(defn wrap-if-modified [handler]
+(defn wrap-if-modified [no-cache? handler]
   (fn [{:keys [headers] :as req}]
     (d/chain
      (handler req)
      (fn [{:keys [status body] :as response}]
-       (if (or (not= 200 status)
+       (if (or (true? no-cache?)
+               (not= 200 status)
                (not (instance? File body)))
          response
          (reply-with-if-modified req response))))))
@@ -202,7 +204,7 @@
   {:status 200
    :body file})
 
-(defn file-handler [{:keys [request-method uri headers] :as req}]
+(defn file-handler [no-listing? {:keys [request-method uri headers] :as req}]
   (if (not= :get request-method)
     method-not-allowed
     (let [path (sanitize-uri uri)]
@@ -216,7 +218,12 @@
             (not (.exists file))
             not-found
 
-            (and (.isDirectory file) (str/ends-with? uri "/"))
+            (and (.isDirectory file)
+                 (true? no-listing?))
+            not-found
+
+            (and (.isDirectory file)
+                 (str/ends-with? uri "/"))
             (reply-with-listing req file)
 
             (.isDirectory file)
@@ -252,30 +259,61 @@
     (log/warn "HTTP server was stopped")
     (reset! server nil)))
 
-;; todo(kachayev): more params (bind, cors, no index, no cache, basic auth)
+(def cli-options
+  [["-p" "--port <PORT>" "Port number"
+    :default 8000
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+   ["-b" "--bind <IP>" "Address to bind to"
+    :default default-bind]
+   [nil "--no-index" "Disable directory listings" :default false]
+   [nil "--no-cache" "Disable cache headers" :default false]
+   ["-h" "--help"]])
+
+;; todo(kachayev): CORS, basic auth, list of files to exclude
 ;; todo(kachayev): update pipeline with HttpObjectAggregator
 ;; todo(kachayev): range requests (we need latest Aleph changes to be merged)
+;; todo(kachayev): Etag support
 (defn -main [& args]
-  (let [port (if (empty? args)
-               default-port
-               (Integer/parseInt (first args)))
-        handler (-> file-handler
-                    parse-accept
-                    wrap-if-modified
-                    inject-mime-type
-                    inject-server-name
-                    wrap-logging)
-        s (http/start-server handler {:port port
-                                      :compression? true
-                                      ;; File operations are blocking,
-                                      ;; nevertheless the directory listing
-                                      ;; is fast enought to be done on I/O
-                                      ;; threads and reading/sending files
-                                      ;; is performed either using zero-copy
-                                      ;; or streaming with a relatively small
-                                      ;; chunks size. Meaning... we don't need
-                                      ;; a separate executor here.
-                                      :executor :none})]
-    (log/warnf "Serving HTTP on %s port %s" default-bind port)
-    (reset! server s)
-    s))
+  (let [{:keys [options
+                arguments
+                summary
+                errors]} (cli/parse-opts args cli-options)]
+    (cond
+      (some? errors)
+      (do
+        (doseq [error errors]
+          (println error))
+        (println "Use `--help` flag to get more information.")
+        (System/exit 0))
+
+      (true? (:help options))
+      (do
+        (println summary)
+        (System/exit 0))
+
+      :else
+      (let [port (if (not (empty? arguments))
+                   (Integer/parseInt (first arguments))
+                   (:port options))
+            bind-address (:bind options)
+            handler (->> (partial file-handler (:no-index options))
+                         parse-accept
+                         (wrap-if-modified (:no-cache options))
+                         inject-mime-type
+                         inject-server-name
+                         wrap-logging)
+            s (http/start-server handler {:port port
+                                          :compression? true
+                                          ;; ile operations are blocking,
+                                          ;; nevertheless the directory listing
+                                          ;; is fast enought to be done on I/O
+                                          ;; threads and reading/sending files
+                                          ;; is performed either using zero-copy
+                                          ;; or streaming with a relatively small
+                                          ;; chunks size. meaning... we don't need
+                                          ;; a separate executor here.
+                                          :executor :none})]
+        (log/warnf "Serving HTTP on %s port %s" bind-address port)
+        (reset! server s)
+        s))))

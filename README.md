@@ -1,6 +1,6 @@
 A simple zero-configuration command-line HTTP files server. Like Python's `SimpleHTTPServer` but scalable. Сan easily handle thousands of simultaneous connections.
 
-Implemented in `Clojure` with `Aleph` and `Netty`. Mostly as an example. It's still skillful and handy tho'. There's even nothing wrong with putting it to production.
+Implemented in `Clojure` with [`Aleph`](https://github.com/ztellman/aleph) and [`Netty`](https://github.com/netty/netty). Mostly as an example. It's still skillful and handy tho'. There's even nothing wrong with putting it to production.
 
 ## Usage
 
@@ -35,7 +35,13 @@ In development:
 
 ## Flags
 
-TBD
+```
+  -p, --port <PORT>  8000     Port number
+  -b, --bind <IP>    0.0.0.0  Address to bind to
+      --no-index              Disable directory listings
+      --no-cache              Disable cache headers
+  -h, --help
+```
 
 ## License
 

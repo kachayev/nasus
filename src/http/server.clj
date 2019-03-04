@@ -266,7 +266,16 @@
                     inject-server-name
                     wrap-logging)
         s (http/start-server handler {:port port
-                                      :compression? true})]
+                                      :compression? true
+                                      ;; File operations are blocking,
+                                      ;; nevertheless the directory listing
+                                      ;; is fast enought to be done on I/O
+                                      ;; threads and reading/sending files
+                                      ;; is performed either using zero-copy
+                                      ;; or streaming with a relatively small
+                                      ;; chunks size. Meaning... we don't need
+                                      ;; a separate executor here.
+                                      :executor :none})]
     (log/warnf "Serving HTTP on %s port %s" default-bind port)
     (reset! server s)
     s))

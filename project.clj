@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [aleph "0.4.7-alpha5"]
                  [net.sf.jmimemagic/jmimemagic "0.1.5"]]
-  :main ^:skip-aot http.server
+  :main http.server
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all}}
+  :deploy-repositories [["clojars" {:sign-releases false}]])

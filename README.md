@@ -1,6 +1,6 @@
-Like Python's `SimpleHTTPServer` but scalable. Сan easily handle thousands of simultaneous connections.
+A simple zero-configuration command-line HTTP files server. Like Python's `SimpleHTTPServer` but scalable. Сan easily handle thousands of simultaneous connections.
 
-Implemented with `Aleph` and `Netty` mostly as an example. It's still skillful and handy tho'. There's even nothing wrong with putting it to production.
+Implemented in `Clojure` with `Aleph` and `Netty`. Mostly as an example. It's still skillful and handy tho'. There's even nothing wrong with putting it to production.
 
 ## Usage
 
@@ -9,7 +9,6 @@ Run in the directory you want to serve:
 ```shell
 clj -Sdeps '{:mvn/version {"nasus" "0.1.0"}}' -m http.server
 ```
-
 ## Features
 
 * Plain text & HTML directory listings based on "Accept" header
@@ -17,12 +16,14 @@ clj -Sdeps '{:mvn/version {"nasus" "0.1.0"}}' -m http.server
 * Streaming and chunked encoding for large files
 * Keep-alive and slow requests handling
 * Transperent content compression (gzip, deflate)
+* Cache control and "Last-Modified
 
 In development:
 
-* Conditional requests: "ETag", "If-None-Match" and "Last-Modified"
+* Conditional requests: "ETag", "If-None-Match"
 * Range queries support
 * SSL/TLS
+* Basic auth
 * List of files & directories to exclude from serving
 
 ## Flags

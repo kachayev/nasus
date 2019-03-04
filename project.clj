@@ -1,4 +1,4 @@
-(defproject nasus "0.1.0"
+(defproject nasus "0.1.1"
   :description "A simple zero-configuration command-line HTTP files server that scales"
   :url "https://github.com/kachayev/simplehttpserver"
   :license {:name "Eclipse Public License"

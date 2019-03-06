@@ -53,7 +53,7 @@
   (->> accept-header
        (re-seq accept-re)
        (map (fn [[_ name q]]
-		          {:name name :q (Float/parseFloat (or q "1.0"))}))))
+              {:name name :q (Float/parseFloat (or q "1.0"))}))))
 
 (defn parse-accept [handler]
   (fn [{:keys [headers] :as req}]

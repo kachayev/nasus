@@ -7,13 +7,13 @@ Implemented in `Clojure` with [`Aleph`](https://github.com/ztellman/aleph) and [
 Run in the directory you want to serve:
 
 ```shell
-clj -Sdeps '{:deps {nasus {:mvn/version "0.1.1"}}}' -m http.server
+clj -Sdeps '{:deps {nasus {:mvn/version "0.1.2"}}}' -m http.server
 ```
 
 Or specify custom port:
 
 ```shell
-clj -Sdeps '{:deps {nasus {:mvn/version "0.1.1"}}}' -m http.server 8001
+clj -Sdeps '{:deps {nasus {:mvn/version "0.1.2"}}}' -m http.server 8001
 ```
 
 ## Features

@@ -248,12 +248,46 @@
      (handler req)
      #(assoc-in % [:headers "Server"] "Nasus"))))
 
+;; this is actually duplicates some effort
+;; the Aleph would do anyways... the problem
+;; is that content-length header will be set
+;; (if missing) after `aleph.http.core/send-message`
+;; is invoked, and we have literally no access
+;; to what's happening there. in fact, we need
+;; content-length to be calculated to log req &
+;; response properly
+(defn inject-content-length [handler]
+  (fn [req]
+    (d/chain
+     (handler req)
+     (fn [{:keys [body] :as response}]
+       (let [len (when (some? body)
+                   (cond
+                     (string? body)
+                     (count body)
+
+                     (instance? File body)
+                     (.length ^File body)
+
+                     :else
+                     nil))]
+         (if (nil? len)
+           response
+           (assoc-in response [:headers "content-length"] len)))))))
+
+(defn method-keyword->str [request-method]
+  (-> request-method name str/upper-case))
+
 (defn wrap-logging [handler]
   (fn [{:keys [request-method uri] :as req}]
     (d/chain
      (handler req)
-     (fn [{:keys [status] :as response}]
-       (log/warnf "%s %s %s" request-method uri status)
+     (fn [{:keys [status headers] :as response}]
+       (let [method' (method-keyword->str request-method)
+             ;; we rely on `inject-content-length` being
+             ;; invoked earlier :expressionless:
+             len (get headers "content-length" "-")]
+         (log/warnf "\"%s %s HTTP/1.1\" %s %s" method'  uri status len))
        response))))
 
 (defn stop []
@@ -305,6 +339,7 @@
                          (wrap-if-modified (:no-cache options))
                          inject-mime-type
                          inject-server-name
+                         inject-content-length
                          wrap-logging)
             s (http/start-server handler {:port port
                                           :compression? true

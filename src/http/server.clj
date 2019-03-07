@@ -93,7 +93,7 @@
 
 (def http-date-format "EEE, dd MMM yyyy HH:mm:ss zzz")
 
-(def http-date-timezone (TimeZone/getTimeZone "GTM"))
+(def http-date-timezone (TimeZone/getTimeZone "GMT"))
 
 (defn http-date-formatter []
   (doto (SimpleDateFormat. http-date-format Locale/ENGLISH)

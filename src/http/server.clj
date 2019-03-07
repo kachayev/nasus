@@ -10,7 +10,7 @@
            [java.net URLDecoder]
            [java.util Date Locale TimeZone]
            [java.text SimpleDateFormat]
-           [net.sf.jmimemagic Magic]
+           [net.sf.jmimemagic Magic MagicMatchNotFoundException]
            [io.netty.handler.codec.http HttpResponseStatus]
            [io.netty.util.internal SystemPropertyUtil]))
 
@@ -70,7 +70,9 @@
 ;;
 
 (defn detect-mime-type [^File file]
-  (.getMimeType (Magic/getMagicMatch file true)))
+  (try
+    (.getMimeType (Magic/getMagicMatch file true))
+    (catch MagicMatchNotFoundException _ nil)))
 
 (defn inject-mime-type [handler]
   (fn [req]
@@ -81,8 +83,9 @@
                (not (instance? File body))
                (contains? headers "content-type"))
          response
-         (let [content-type (detect-mime-type body)]
-           (assoc-in response [:headers "content-type"] content-type)))))))
+         (if-let [content-type (detect-mime-type body)]
+           (assoc-in response [:headers "content-type"] content-type)
+           response))))))
 
 ;;
 ;; cache control

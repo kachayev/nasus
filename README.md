@@ -36,10 +36,11 @@ In development:
 ## Flags
 
 ```
-  -p, --port <PORT>  8000     Port number
-  -b, --bind <IP>    0.0.0.0  Address to bind to
-      --no-index              Disable directory listings
-      --no-cache              Disable cache headers
+  -p, --port <PORT>     8000     Port number
+  -b, --bind <IP>       0.0.0.0  Address to bind to
+      --no-index                 Disable directory listings
+      --no-cache                 Disable cache headers
+      --no-compression           Disable deflate and gzip compression
   -h, --help
 ```
 

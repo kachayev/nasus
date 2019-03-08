@@ -305,6 +305,7 @@
     :default default-bind]
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
+   [nil "--no-compression" "Disable deflate and gzip compression" :default false]
    ["-h" "--help"]])
 
 ;; todo(kachayev): CORS, basic auth, list of files to exclude
@@ -334,6 +335,7 @@
                    (Integer/parseInt (first arguments))
                    (:port options))
             bind-address (:bind options)
+            compress? (not (:no-compression options))
             handler (->> (partial file-handler (:no-index options))
                          parse-accept
                          (wrap-if-modified (:no-cache options))
@@ -342,7 +344,7 @@
                          inject-content-length
                          wrap-logging)
             s (http/start-server handler {:port port
-                                          :compression? true
+                                          :compression? compress?
                                           ;; file operations are blocking,
                                           ;; nevertheless the directory listing
                                           ;; is fast enought to be done on I/O

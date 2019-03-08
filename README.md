@@ -27,7 +27,6 @@ clj -Sdeps '{:deps {nasus {:mvn/version "0.1.2"}}}' -m http.server 8001
 
 In development:
 
-* Conditional requests: "ETag", "If-None-Match"
 * Range queries support
 * SSL/TLS
 * Basic auth

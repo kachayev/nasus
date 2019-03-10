@@ -123,15 +123,16 @@
           (inject-cache-headers response))))))
 
 (defn wrap-if-modified [no-cache? handler]
-  (fn [{:keys [headers] :as req}]
-    (d/chain
-     (handler req)
-     (fn [{:keys [status body] :as response}]
-       (if (or (true? no-cache?)
-               (not= 200 status)
-               (not (instance? File body)))
-         response
-         (reply-with-if-modified req response))))))
+  (if (true? no-cache?)
+    handler  
+    (fn [{:keys [headers] :as req}]
+      (d/chain
+       (handler req)
+       (fn [{:keys [status body] :as response}]
+         (if (or (not= 200 status)
+                 (not (instance? File body)))
+           response
+           (reply-with-if-modified req response)))))))
 
 ;;
 ;; Static files handler

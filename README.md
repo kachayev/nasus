@@ -51,4 +51,4 @@ Nasus is licensed under the MIT license, available at MIT and also in the LICENS
 
 ## Nasus
 
-![Nasus](https://github.com/kachayev/nasus/blob/master/docs/logo/nasus.jpg)
+![Nasus](/docs/logo/nasus.jpg)

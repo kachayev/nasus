@@ -6,11 +6,11 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.tools.cli :as cli])
-  (:import [java.io File]
+  (:import [java.io File IOException]
            [java.net URLDecoder]
            [java.util Date Locale TimeZone]
            [java.text SimpleDateFormat]
-           [net.sf.jmimemagic Magic MagicMatchNotFoundException]
+           [org.apache.tika Tika]
            [io.netty.handler.codec.http HttpResponseStatus]
            [io.netty.util.internal SystemPropertyUtil]))
 
@@ -69,10 +69,12 @@
 ;; mime types detector & injector middleware
 ;;
 
+(def ^Tika mime-detector (Tika.))
+
 (defn detect-mime-type [^File file]
   (try
-    (.getMimeType (Magic/getMagicMatch file true))
-    (catch MagicMatchNotFoundException _ nil)))
+    (.detect mime-detector file)
+    (catch IOException _ nil)))
 
 (defn inject-mime-type [handler]
   (fn [req]
@@ -299,7 +301,7 @@
 
 (def cli-options
   [["-p" "--port <PORT>" "Port number"
-    :default 8000
+    :default default-port
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
    ["-b" "--bind <IP>" "Address to bind to"
@@ -348,7 +350,7 @@
                                           :compression? compress?
                                           ;; file operations are blocking,
                                           ;; nevertheless the directory listing
-                                          ;; is fast enought to be done on I/O
+                                          ;; is fast enough to be done on I/O
                                           ;; threads and reading/sending files
                                           ;; is performed either using zero-copy
                                           ;; or streaming with a relatively small

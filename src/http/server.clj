@@ -290,13 +290,13 @@
              ;; we rely on `inject-content-length` being
              ;; invoked earlier :expressionless:
              len (get headers "content-length" "-")]
-         (log/warnf "\"%s %s HTTP/1.1\" %s %s" method'  uri status len))
+         (log/infof "\"%s %s HTTP/1.1\" %s %s" method'  uri status len))
        response))))
 
 (defn stop []
   (when-let [s @server]
     (.close s)
-    (log/warn "HTTP server was stopped")
+    (log/info "HTTP server was stopped")
     (reset! server nil)))
 
 (def cli-options
@@ -357,6 +357,6 @@
                                           ;; chunks size. meaning... we don't need
                                           ;; a separate executor here.
                                           :executor :none})]
-        (log/warnf "Serving HTTP on %s port %s" bind-address port)
+        (log/infof "Serving HTTP on %s port %s" bind-address port)
         (reset! server s)
         s))))

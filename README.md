@@ -22,7 +22,7 @@ clj -Sdeps '{:deps {nasus {:mvn/version "0.1.3"}}}' -m http.server 8001
 * Automatic mime-type detection
 * Streaming and chunked encoding for large files
 * Keep-alive and slow requests handling
-* Transperent content compression (gzip, deflate)
+* Transparent content compression (gzip, deflate)
 * Cache control and "Last-Modified
 
 In development:

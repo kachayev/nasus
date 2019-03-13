@@ -1,6 +1,7 @@
 (ns http.server
   (:gen-class)
   (:require [aleph.http :as http]
+            [aleph.http.client-middleware :refer [basic-auth-value]]
             [manifold.deferred :as d]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -126,7 +127,7 @@
 
 (defn wrap-if-modified [no-cache? handler]
   (if (true? no-cache?)
-    handler  
+    handler
     (fn [{:keys [headers] :as req}]
       (d/chain
        (handler req)
@@ -293,6 +294,24 @@
          (log/infof "\"%s %s HTTP/1.1\" %s %s" method'  uri status len))
        response))))
 
+(defn pw-prompt []
+  (str (do (println "Password: ") (.readPassword (System/console)))))
+
+(defn maybe-inject-auth
+  [auth handler]
+  (fn [req]
+    (handler (if auth
+               (assoc-in req [:headers "authorization"] auth)
+               req))))
+
+(defn parse-auth [auth]
+  "make sure pw is present, if not prompt for it"
+  (let [[user pw] (clojure.string/split auth #":")]
+    (basic-auth-value
+     (if (not pw)
+       (str user ":" (pw-prompt))
+       auth))))
+
 (defn stop []
   (when-let [s @server]
     (.close s)
@@ -306,6 +325,7 @@
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
    ["-b" "--bind <IP>" "Address to bind to"
     :default default-bind]
+   [nil "--auth <USER:PASSWORD>" "Basic auth"]
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
@@ -337,6 +357,7 @@
       (let [port (if (not (empty? arguments))
                    (Integer/parseInt (first arguments))
                    (:port options))
+            basic-auth (when-let [auth (:auth options)] (parse-auth auth))
             bind-address (:bind options)
             compress? (not (:no-compression options))
             handler (->> (partial file-handler (:no-index options))
@@ -345,6 +366,7 @@
                          inject-mime-type
                          inject-server-name
                          inject-content-length
+                         (maybe-inject-auth basic-auth)
                          wrap-logging)
             s (http/start-server handler {:port port
                                           :compression? compress?

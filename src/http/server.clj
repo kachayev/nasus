@@ -36,7 +36,7 @@
 
 (def method-not-allowed {:status (.code HttpResponseStatus/METHOD_NOT_ALLOWED)
                          :headers error-headers
-                         ::close? true})
+                         :aleph.http.client/close true})
 
 (def not-found {:status (.code HttpResponseStatus/NOT_FOUND)
                 :headers error-headers

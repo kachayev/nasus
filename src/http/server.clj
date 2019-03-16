@@ -325,7 +325,6 @@
 ;; todo(kachayev): CORS, basic auth, list of files to exclude
 ;; todo(kachayev): update pipeline with HttpObjectAggregator
 ;; todo(kachayev): range requests (we need latest Aleph changes to be merged)
-;; todo(kachayev): Etag support
 (defn -main [& args]
   (let [{:keys [options
                 arguments

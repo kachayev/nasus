@@ -7,6 +7,7 @@
             [clojure.tools.logging :as log]
             [clojure.tools.cli :as cli])
   (:import [java.io File IOException]
+           [java.nio.file Files Path]
            [java.net URLDecoder]
            [java.util Date Locale TimeZone]
            [java.text SimpleDateFormat]
@@ -162,13 +163,18 @@
         (when (secure? uri)
           (str user-dir uri))))))
 
+(defn symlink? [^File file]
+  (Files/isSymbolicLink ^Path (.toPath file)))
+
 (defn reply-with-redirect [new-location]
   {:status (.code HttpResponseStatus/FOUND)
    :headers {"location" new-location}})
 
-(defn dir-listing [directory]
+(defn dir-listing [directory follow-symlink?]
   (for [file (.listFiles directory)
-        :when (.canRead file)]
+        :when (and (.canRead file)
+                   (or follow-symlink?
+                       (not (symlink? file))))]
     (.getName file)))
 
 (defn render-text [listing]
@@ -195,8 +201,8 @@
          "<hr/>\r\n")))
 
 ;; todo(kachayev): preaggregate directories upfront
-(defn reply-with-listing [{:keys [uri] :as req} file]
-  (let [listing (sort (dir-listing file))
+(defn reply-with-listing [{:keys [uri] :as req} file follow-symlink?]
+  (let [listing (sort (dir-listing file follow-symlink?))
         [content-type body] (if (accept? "text/html" req)
                               ["text/html" (render-html uri listing)]
                               ["text/plain" (render-text listing)])]
@@ -210,7 +216,8 @@
   {:status 200
    :body file})
 
-(defn file-handler [no-listing? {:keys [request-method uri headers] :as req}]
+(defn file-handler [{:keys [no-index follow-symlink]}
+                    {:keys [request-method uri headers] :as req}]
   (if (not= :get request-method)
     method-not-allowed
     (let [path (sanitize-uri uri)]
@@ -224,13 +231,16 @@
             (not (.exists file))
             not-found
 
+            (and (not follow-symlink) (symlink? file))
+            not-found
+
             (and (.isDirectory file)
-                 (true? no-listing?))
+                 (true? no-index))
             not-found
 
             (and (.isDirectory file)
                  (str/ends-with? uri "/"))
-            (reply-with-listing req file)
+            (reply-with-listing req file follow-symlink)
 
             (.isDirectory file)
             (reply-with-redirect (str uri "/"))
@@ -309,6 +319,7 @@
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
+   [nil "--follow-symlink" "Enable symbolic links support" :default false]
    ["-h" "--help"]])
 
 ;; todo(kachayev): CORS, basic auth, list of files to exclude
@@ -339,7 +350,7 @@
                    (:port options))
             bind-address (:bind options)
             compress? (not (:no-compression options))
-            handler (->> (partial file-handler (:no-index options))
+            handler (->> (partial file-handler (select-keys options [:no-index :follow-symlink]))
                          parse-accept
                          (wrap-if-modified (:no-cache options))
                          inject-mime-type

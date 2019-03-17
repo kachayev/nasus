@@ -294,22 +294,27 @@
          (log/infof "\"%s %s HTTP/1.1\" %s %s" method'  uri status len))
        response))))
 
-(defn pw-prompt []
-  (str (do (println "Password: ") (.readPassword (System/console)))))
+(defn password-prompt! []
+  (println "Enter password: ")
+  (let [pw (-> (System/console) (.readPassword) (String.))]
+    (if (empty? pw)
+      (do (println "Password cannot be empty!")
+          (recur))
+      pw)))
 
 (defn maybe-inject-auth
   [auth handler]
-  (fn [req]
-    (handler (if auth
-               (assoc-in req [:headers "authorization"] auth)
-               req))))
+  (if (some? auth)
+    (fn [req]
+      (handler (assoc-in req [:headers "authorization"] auth)))
+    handler))
 
 (defn parse-auth [auth]
-  "make sure pw is present, if not prompt for it"
-  (let [[user pw] (clojure.string/split auth #":")]
+  "make sure password is present, if not prompt for it"
+  (let [[user pw] (str/split auth #":" 2)]
     (basic-auth-value
      (if (not pw)
-       (str user ":" (pw-prompt))
+       (str user ":" (password-prompt!))
        auth))))
 
 (defn stop []
@@ -325,7 +330,7 @@
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
    ["-b" "--bind <IP>" "Address to bind to"
     :default default-bind]
-   [nil "--auth <USER:PASSWORD>" "Basic auth"]
+   [nil "--auth <USER[:PASSWORD]>" "Basic auth"]
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]

@@ -36,11 +36,17 @@ In development:
 ## Flags
 
 ```
-  -p, --port <PORT>     8000     Port number
-  -b, --bind <IP>       0.0.0.0  Address to bind to
-      --no-index                 Disable directory listings
-      --no-cache                 Disable cache headers
-      --no-compression           Disable deflate and gzip compression
+  -p, --port <PORT>         8000     Port number
+  -b, --bind <IP>           0.0.0.0  Address to bind to
+      --no-index                     Disable directory listings
+      --no-cache                     Disable cache headers
+      --no-compression               Disable deflate and gzip compression
+      --follow-symlink               Enable symbolic links support
+      --include-hidden               Process hidden files as normal
+      --cors                         Support Acccess-Control-* headers, see --cors-* options for more fine-grained control
+      --cors-origin                  Acccess-Control-Allow-Origin response header value
+      --cors-methods                 Acccess-Control-Allow-Methods response header value
+      --cors-allow-headers           Acccess-Control-Allow-Headers response header value
   -h, --help
 ```
 

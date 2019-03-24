@@ -24,6 +24,7 @@ clj -Sdeps '{:deps {nasus {:mvn/version "0.1.3"}}}' -m http.server 8001
 * Keep-alive and slow requests handling
 * Transparent content compression (gzip, deflate)
 * Cache control and "Last-Modified
+* CORS headers
 
 In development:
 

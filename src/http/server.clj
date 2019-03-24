@@ -346,7 +346,7 @@
    [nil "--cors-allow-headers" "Acccess-Control-Allow-Headers response header value" :default nil]
    ["-h" "--help"]])
 
-;; todo(kachayev): CORS, basic auth, list of files to exclude
+;; todo(kachayev): basic auth, list of files to exclude
 ;; todo(kachayev): update pipeline with HttpObjectAggregator
 ;; todo(kachayev): range requests (we need latest Aleph changes to be merged)
 (defn -main [& args]

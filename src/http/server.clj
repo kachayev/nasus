@@ -288,6 +288,22 @@
            response
            (assoc-in response [:headers "content-length"] len)))))))
 
+;; xxx: origin, methods and headers settings
+;; todo(kachayev): should we check method & headers when serving OPTIONS?
+(defn wrap-cors [settings handler]
+  (if (nil? settings)
+    handler
+    (let [cors-headers {"Access-Control-Allow-Origin" "*"
+                        "Access-Control-Allow-Methods" "GET, POST"
+                        "Access-Control-Allow-Credentials" "true"}]
+      (fn [{:keys [request-method headers] :as req}]
+        (if (and (identical? :options request-method)
+                 (some? (get headers "Access-Control-Request-Method")))
+          {:status 200 :headers cors-headers}
+          (d/chain'
+           (handler req)
+           #(update % :headers merge cors-headers)))))))
+
 (defn method-keyword->str [request-method]
   (-> request-method name str/upper-case))
 
@@ -320,6 +336,7 @@
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
    [nil "--follow-symlink" "Enable symbolic links support" :default false]
+   [nil "--cors" "Support Acccess-Control-* headers, by default sets origin to *"]
    ["-h" "--help"]])
 
 ;; todo(kachayev): CORS, basic auth, list of files to exclude
@@ -350,6 +367,7 @@
             bind-address (:bind options)
             compress? (not (:no-compression options))
             handler (->> (partial file-handler (select-keys options [:no-index :follow-symlink]))
+                         (wrap-cors (:cors options))
                          parse-accept
                          (wrap-if-modified (:no-cache options))
                          inject-mime-type

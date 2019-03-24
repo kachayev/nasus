@@ -48,7 +48,3 @@ In development:
 Copyright © 2019 Nasus
 
 Nasus is licensed under the MIT license, available at MIT and also in the LICENSE file.
-
-## Nasus
-
-![Nasus](/docs/logo/nasus.jpg)

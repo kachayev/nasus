@@ -288,14 +288,17 @@
            response
            (assoc-in response [:headers "content-length"] len)))))))
 
-;; xxx: origin, methods and headers settings
 ;; todo(kachayev): should we check method & headers when serving OPTIONS?
 (defn wrap-cors [settings handler]
   (if (nil? settings)
     handler
-    (let [cors-headers {"Access-Control-Allow-Origin" "*"
-                        "Access-Control-Allow-Methods" "GET, POST"
-                        "Access-Control-Allow-Credentials" "true"}]
+    (let [allowed-headers (:headers settings)
+          cors-headers
+          (cond-> {"Access-Control-Allow-Origin" (get settings :orgiin "*")
+                   "Access-Control-Allow-Methods" (get settings :methods "GET, POST")
+                   "Access-Control-Allow-Credentials" "true"}
+            (some? allowed-headers)
+            (assoc "Access-Control-Allow-Headers" allowed-headers))]
       (fn [{:keys [request-method headers] :as req}]
         (if (and (identical? :options request-method)
                  (some? (get headers "Access-Control-Request-Method")))
@@ -336,7 +339,11 @@
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
    [nil "--follow-symlink" "Enable symbolic links support" :default false]
-   [nil "--cors" "Support Acccess-Control-* headers, by default sets origin to *"]
+   [nil "--cors" (str "Support Acccess-Control-* headers, "
+                      "see --cors-* options for more fine-grained control") :default false]
+   [nil "--cors-origin" "Acccess-Control-Allow-Origin response header value" :default "*"]
+   [nil "--cors-methods" "Acccess-Control-Allow-Methods response header value" :default "GET, POST"]
+   [nil "--cors-allow-headers" "Acccess-Control-Allow-Headers response header value" :default nil]
    ["-h" "--help"]])
 
 ;; todo(kachayev): CORS, basic auth, list of files to exclude
@@ -367,7 +374,10 @@
             bind-address (:bind options)
             compress? (not (:no-compression options))
             handler (->> (partial file-handler (select-keys options [:no-index :follow-symlink]))
-                         (wrap-cors (:cors options))
+                         (wrap-cors (when (true? (:cors options))
+                                      {:origin (:cors-origin options)
+                                       :methods (:cors-methods options)
+                                       :headers (:cors-allow-headers options)}))
                          parse-accept
                          (wrap-if-modified (:no-cache options))
                          inject-mime-type

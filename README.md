@@ -7,13 +7,13 @@ Implemented in `Clojure` with [`Aleph`](https://github.com/ztellman/aleph) and [
 Run in the directory you want to serve:
 
 ```shell
-clj -Sdeps '{:deps {nasus {:mvn/version "0.1.3"}}}' -m http.server
+clj -Sdeps '{:deps {nasus {:mvn/version "0.1.4"}}}' -m http.server
 ```
 
 Or specify custom port:
 
 ```shell
-clj -Sdeps '{:deps {nasus {:mvn/version "0.1.3"}}}' -m http.server 8001
+clj -Sdeps '{:deps {nasus {:mvn/version "0.1.4"}}}' -m http.server 8001
 ```
 
 ## Features
@@ -22,8 +22,9 @@ clj -Sdeps '{:deps {nasus {:mvn/version "0.1.3"}}}' -m http.server 8001
 * Automatic mime-type detection
 * Streaming and chunked encoding for large files
 * Keep-alive and slow requests handling
-* Transperent content compression (gzip, deflate)
-* Cache control and "Last-Modified
+* Transparent content compression (gzip, deflate)
+* Cache control and "Last-Modified"
+* CORS headers
 
 In development:
 
@@ -35,11 +36,17 @@ In development:
 ## Flags
 
 ```
-  -p, --port <PORT>     8000     Port number
-  -b, --bind <IP>       0.0.0.0  Address to bind to
-      --no-index                 Disable directory listings
-      --no-cache                 Disable cache headers
-      --no-compression           Disable deflate and gzip compression
+  -p, --port <PORT>         8000     Port number
+  -b, --bind <IP>           0.0.0.0  Address to bind to
+      --no-index                     Disable directory listings
+      --no-cache                     Disable cache headers
+      --no-compression               Disable deflate and gzip compression
+      --follow-symlink               Enable symbolic links support
+      --include-hidden               Process hidden files as normal
+      --cors                         Support Acccess-Control-* headers, see --cors-* options for more fine-grained control
+      --cors-origin                  Acccess-Control-Allow-Origin response header value
+      --cors-methods                 Acccess-Control-Allow-Methods response header value
+      --cors-allow-headers           Acccess-Control-Allow-Headers response header value
   -h, --help
 ```
 
@@ -48,7 +55,3 @@ In development:
 Copyright © 2019 Nasus
 
 Nasus is licensed under the MIT license, available at MIT and also in the LICENSE file.
-
-## Nasus
-
-![Nasus](/docs/logo/nasus.jpg)

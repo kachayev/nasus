@@ -1,4 +1,4 @@
-(defproject nasus "0.1.3"
+(defproject nasus "0.1.4"
   :description "A simple zero-configuration command-line HTTP files server that scales"
   :url "https://github.com/kachayev/nasus"
   :license {:name "MIT License"

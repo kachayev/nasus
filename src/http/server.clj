@@ -8,6 +8,7 @@
             [clojure.tools.logging :as log]
             [clojure.tools.cli :as cli])
   (:import [java.io File IOException]
+           [java.nio.file Files Path]
            [java.net URLDecoder]
            [java.util Date Locale TimeZone]
            [java.text SimpleDateFormat]
@@ -40,7 +41,7 @@
 
 (def method-not-allowed {:status (.code HttpResponseStatus/METHOD_NOT_ALLOWED)
                          :headers error-headers
-                         ::close? true})
+                         :aleph.http.client/close true})
 
 (def not-found {:status (.code HttpResponseStatus/NOT_FOUND)
                 :headers error-headers
@@ -155,7 +156,7 @@
 (defn secure? [uri]
   (and (not (str/includes? uri (str File/separator ".")))
        (not (str/includes? uri (str "." File/separator)))
-       (not (str/starts-with? uri "."))
+       (not (str/starts-with? uri ".."))
        (not (str/ends-with? uri "."))
        (nil? (re-matches insecure-uri uri))))
 
@@ -164,16 +165,23 @@
     (when (and (not (str/blank? uri))
                (str/starts-with? uri "/"))
       (let [uri (str/replace uri #"\/" File/separator)]
-        (when (secure? uri)
+        (when (secure? (subs uri 1))
           (str user-dir uri))))))
+
+(defn symlink? [^File file]
+  (Files/isSymbolicLink ^Path (.toPath file)))
 
 (defn reply-with-redirect [new-location]
   {:status (.code HttpResponseStatus/FOUND)
    :headers {"location" new-location}})
 
-(defn dir-listing [directory]
+(defn dir-listing [directory follow-symlink? include-hidden?]
   (for [file (.listFiles directory)
-        :when (.canRead file)]
+        :when (and (.canRead file)
+                   (or follow-symlink?
+                       (not (symlink? file)))
+                   (or include-hidden?
+                       (not (.isHidden file))))]
     (.getName file)))
 
 (defn render-text [listing]
@@ -200,8 +208,8 @@
          "<hr/>\r\n")))
 
 ;; todo(kachayev): preaggregate directories upfront
-(defn reply-with-listing [{:keys [uri] :as req} file]
-  (let [listing (sort (dir-listing file))
+(defn reply-with-listing [{:keys [uri] :as req} file follow-symlink? include-hidden?]
+  (let [listing (sort (dir-listing file follow-symlink? include-hidden?))
         [content-type body] (if (accept? "text/html" req)
                               ["text/html" (render-html uri listing)]
                               ["text/plain" (render-text listing)])]
@@ -215,7 +223,8 @@
   {:status 200
    :body file})
 
-(defn file-handler [no-listing? {:keys [request-method uri headers] :as req}]
+(defn file-handler [{:keys [no-index follow-symlink include-hidden]}
+                    {:keys [request-method uri headers] :as req}]
   (if (not= :get request-method)
     method-not-allowed
     (let [path (sanitize-uri uri)]
@@ -226,20 +235,24 @@
 
             (= (:status req) 401)
             unauthorized
-
-            (.isHidden file)
+            
+            (and (.isHidden file)
+                 (not include-hidden))
             not-found
 
             (not (.exists file))
             not-found
 
+            (and (not follow-symlink) (symlink? file))
+            not-found
+
             (and (.isDirectory file)
-                 (true? no-listing?))
+                 (true? no-index))
             not-found
 
             (and (.isDirectory file)
                  (str/ends-with? uri "/"))
-            (reply-with-listing req file)
+            (reply-with-listing req file follow-symlink include-hidden)
 
             (.isDirectory file)
             (reply-with-redirect (str uri "/"))
@@ -286,6 +299,25 @@
          (if (nil? len)
            response
            (assoc-in response [:headers "content-length"] len)))))))
+
+;; todo(kachayev): should we check method & headers when serving OPTIONS?
+(defn wrap-cors [settings handler]
+  (if (nil? settings)
+    handler
+    (let [allowed-headers (:headers settings)
+          cors-headers
+          (cond-> {"Access-Control-Allow-Origin" (get settings :orgiin "*")
+                   "Access-Control-Allow-Methods" (get settings :methods "GET, POST")
+                   "Access-Control-Allow-Credentials" "true"}
+            (some? allowed-headers)
+            (assoc "Access-Control-Allow-Headers" allowed-headers))]
+      (fn [{:keys [request-method headers] :as req}]
+        (if (and (identical? :options request-method)
+                 (some? (get headers "Access-Control-Request-Method")))
+          {:status 200 :headers cors-headers}
+          (d/chain'
+           (handler req)
+           #(update % :headers merge cors-headers)))))))
 
 (defn method-keyword->str [request-method]
   (-> request-method name str/upper-case))
@@ -350,12 +382,18 @@
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
+   [nil "--follow-symlink" "Enable symbolic links support" :default false]
+   [nil "--include-hidden" "Process hidden files as normal" :default false]
+   [nil "--cors" (str "Support Acccess-Control-* headers, "
+                      "see --cors-* options for more fine-grained control") :default false]
+   [nil "--cors-origin" "Acccess-Control-Allow-Origin response header value" :default "*"]
+   [nil "--cors-methods" "Acccess-Control-Allow-Methods response header value" :default "GET, POST"]
+   [nil "--cors-allow-headers" "Acccess-Control-Allow-Headers response header value" :default nil]
    ["-h" "--help"]])
 
-;; todo(kachayev): CORS, basic auth, list of files to exclude
+;; todo(kachayev): basic auth, list of files to exclude
 ;; todo(kachayev): update pipeline with HttpObjectAggregator
 ;; todo(kachayev): range requests (we need latest Aleph changes to be merged)
-;; todo(kachayev): Etag support
 (defn -main [& args]
   (let [{:keys [options
                 arguments
@@ -381,7 +419,13 @@
             basic-auth (when-let [auth (:auth options)] (parse-auth auth))
             bind-address (:bind options)
             compress? (not (:no-compression options))
-            handler (->> (partial file-handler (:no-index options))
+            handler (->> (partial file-handler (select-keys options [:no-index
+                                                                     :follow-symlink
+                                                                     :include-hidden]))
+                         (wrap-cors (when (true? (:cors options))
+                                      {:origin (:cors-origin options)
+                                       :methods (:cors-methods options)
+                                       :headers (:cors-allow-headers options)}))
                          parse-accept
                          (wrap-if-modified (:no-cache options))
                          inject-mime-type

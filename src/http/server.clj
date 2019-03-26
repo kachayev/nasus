@@ -348,14 +348,15 @@
   (if (some? auth)
     (fn [{:keys [headers] :as req}]
       (if (not= (headers "Authorization") auth)
-        (handler (-> (update req :headers dissoc "authorization")
-                     (assoc-in [:headers "WWW-Authenticate"] "Basic")
-                     (assoc :status 401)))
+        (-> (update req :headers dissoc "authorization")
+            (assoc-in [:headers "WWW-Authenticate"] "Basic realm=\"Nasus\"")
+            (assoc :status 401))
         (handler req)))
     handler))
 
-(defn parse-auth [auth]
+(defn parse-auth
   "make sure password is present, if not prompt for it"
+  [auth]
   (let [[user pw] (str/split auth #":" 2)]
     (basic-auth-value
      (if (not pw)

@@ -232,10 +232,6 @@
         forbidden
         (let [file (io/file path)]
           (cond
-
-            (= (:status req) 401)
-            unauthorized
-
             (and (.isHidden file)
                  (not include-hidden))
             not-found

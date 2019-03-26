@@ -34,6 +34,10 @@
                 ;; right after the response was flushed
                 :aleph.http.client/close true})
 
+(def unauthorized {:status (.code HttpResponseStatus/UNAUTHORIZED)
+                   :headers error-headers
+                   :aleph.http.client/close true})
+
 (def method-not-allowed {:status (.code HttpResponseStatus/METHOD_NOT_ALLOWED)
                          :headers error-headers
                          ::close? true})
@@ -219,6 +223,10 @@
         forbidden
         (let [file (io/file path)]
           (cond
+
+            (= (:status req) 401)
+            unauthorized
+
             (.isHidden file)
             not-found
 
@@ -296,17 +304,25 @@
 
 (defn password-prompt! []
   (println "Enter password: ")
-  (let [pw (-> (System/console) (.readPassword) (String.))]
-    (if (empty? pw)
-      (do (println "Password cannot be empty!")
-          (recur))
-      pw)))
+  (if-let [console (System/console)]
+    ;; no matching ctor despite clearly ctor existing for this ariety
+    ;; also .readPassword has no one-ariety, and the two ariety complains str can't be object
+    (let [pw (String. (.readPassword console))]
+      (if (empty? pw)
+        (do (println "Password cannot be empty!")
+            (recur))
+        pw))
+    (throw (Exception. "No console available"))))
 
 (defn maybe-inject-auth
   [auth handler]
   (if (some? auth)
-    (fn [req]
-      (handler (assoc-in req [:headers "authorization"] auth)))
+    (fn [{:keys [headers] :as req}]
+      (if (not= (headers "Authorization") auth)
+        (handler (-> (update req :headers dissoc "authorization")
+                     (assoc-in [:headers "WWW-Authenticate"] "Basic")
+                     (assoc :status 401)))
+        (handler req)))
     handler))
 
 (defn parse-auth [auth]

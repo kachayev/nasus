@@ -23,7 +23,7 @@ clj -Sdeps '{:deps {nasus {:mvn/version "0.1.4"}}}' -m http.server 8001
 * Streaming and chunked encoding for large files
 * Keep-alive and slow requests handling
 * Transparent content compression (gzip, deflate)
-* Cache control and "Last-Modified
+* Cache control and "Last-Modified"
 * CORS headers
 
 In development:

@@ -235,7 +235,7 @@
 
             (= (:status req) 401)
             unauthorized
-            
+
             (and (.isHidden file)
                  (not include-hidden))
             not-found
@@ -335,11 +335,8 @@
        response))))
 
 (defn password-prompt! []
-  (println "Enter password: ")
   (if-let [console (System/console)]
-    ;; no matching ctor despite clearly ctor existing for this ariety
-    ;; also .readPassword has no one-ariety, and the two ariety complains str can't be object
-    (let [pw (String. (.readPassword console))]
+    (let [pw (String. (.readPassword console  "Enter password: " nil))]
       (if (empty? pw)
         (do (println "Password cannot be empty!")
             (recur))

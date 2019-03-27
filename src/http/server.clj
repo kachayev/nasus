@@ -339,25 +339,25 @@
         pw))
     (throw (Exception. "No console available"))))
 
-(defn maybe-inject-auth
-  [auth handler]
-  (if (some? auth)
+(defn maybe-inject-auth [auth handler]
+  (if (nil? auth)
+    handler
     (fn [{:keys [headers] :as req}]
-      (if (not= (headers "Authorization") auth)
-        (-> (update req :headers dissoc "authorization")
+      (if (= (get headers "Authorization") auth)
+        (handler req)
+        (-> req
+            (update :headers dissoc "authorization")
             (assoc-in [:headers "WWW-Authenticate"] "Basic realm=\"Nasus\"")
-            (assoc :status 401))
-        (handler req)))
-    handler))
+            (assoc :status 401))))))
 
 (defn parse-auth
-  "make sure password is present, if not prompt for it"
+  "Make sure password is present, if not prompt for it."
   [auth]
   (let [[user pw] (str/split auth #":" 2)]
     (basic-auth-value
-     (if (not pw)
-       (str user ":" (password-prompt!))
-       auth))))
+     (if (some? pw)
+       auth
+       (str user ":" (password-prompt!))))))
 
 (defn stop []
   (when-let [s @server]
@@ -385,7 +385,7 @@
    [nil "--cors-allow-headers" "Acccess-Control-Allow-Headers response header value" :default nil]
    ["-h" "--help"]])
 
-;; todo(kachayev): basic auth, list of files to exclude
+;; todo(kachayev): list of files to exclude
 ;; todo(kachayev): update pipeline with HttpObjectAggregator
 ;; todo(kachayev): range requests (we need latest Aleph changes to be merged)
 (defn -main [& args]

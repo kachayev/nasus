@@ -7,13 +7,13 @@ Implemented in `Clojure` with [`Aleph`](https://github.com/ztellman/aleph) and [
 Run in the directory you want to serve:
 
 ```shell
-clj -Sdeps '{:deps {nasus {:mvn/version "0.1.4"}}}' -m http.server
+clj -Sdeps '{:deps {nasus {:mvn/version "0.1.5"}}}' -m http.server
 ```
 
 Or specify custom port:
 
 ```shell
-clj -Sdeps '{:deps {nasus {:mvn/version "0.1.4"}}}' -m http.server 8001
+clj -Sdeps '{:deps {nasus {:mvn/version "0.1.5"}}}' -m http.server 8001
 ```
 
 ## Features
@@ -30,7 +30,6 @@ In development:
 
 * Range queries support
 * SSL/TLS
-* Basic auth
 * List of files & directories to exclude from serving
 
 ## Flags
@@ -38,6 +37,7 @@ In development:
 ```
   -p, --port <PORT>         8000     Port number
   -b, --bind <IP>           0.0.0.0  Address to bind to
+      --auth <USER[:PASSWORD]>       Basic auth
       --no-index                     Disable directory listings
       --no-cache                     Disable cache headers
       --no-compression               Disable deflate and gzip compression

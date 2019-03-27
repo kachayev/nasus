@@ -1,6 +1,7 @@
 (ns http.server
   (:gen-class)
   (:require [aleph.http :as http]
+            [aleph.http.client-middleware :refer [basic-auth-value]]
             [manifold.deferred :as d]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -33,6 +34,10 @@
                 ;; forces Aleph to close the connection
                 ;; right after the response was flushed
                 :aleph.http.client/close true})
+
+(def unauthorized {:status (.code HttpResponseStatus/UNAUTHORIZED)
+                   :headers error-headers
+                   :aleph.http.client/close true})
 
 (def method-not-allowed {:status (.code HttpResponseStatus/METHOD_NOT_ALLOWED)
                          :headers error-headers
@@ -127,7 +132,7 @@
 
 (defn wrap-if-modified [no-cache? handler]
   (if (true? no-cache?)
-    handler  
+    handler
     (fn [{:keys [headers] :as req}]
       (d/chain
        (handler req)
@@ -325,6 +330,35 @@
          (log/infof "\"%s %s HTTP/1.1\" %s %s" method'  uri status len))
        response))))
 
+(defn password-prompt! []
+  (if-let [console (System/console)]
+    (let [pw (String. (.readPassword console  "Enter password: " nil))]
+      (if (empty? pw)
+        (do (println "Password cannot be empty!")
+            (recur))
+        pw))
+    (throw (Exception. "No console available"))))
+
+(defn maybe-inject-auth
+  [auth handler]
+  (if (some? auth)
+    (fn [{:keys [headers] :as req}]
+      (if (not= (headers "Authorization") auth)
+        (-> (update req :headers dissoc "authorization")
+            (assoc-in [:headers "WWW-Authenticate"] "Basic realm=\"Nasus\"")
+            (assoc :status 401))
+        (handler req)))
+    handler))
+
+(defn parse-auth
+  "make sure password is present, if not prompt for it"
+  [auth]
+  (let [[user pw] (str/split auth #":" 2)]
+    (basic-auth-value
+     (if (not pw)
+       (str user ":" (password-prompt!))
+       auth))))
+
 (defn stop []
   (when-let [s @server]
     (.close s)
@@ -338,6 +372,7 @@
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
    ["-b" "--bind <IP>" "Address to bind to"
     :default default-bind]
+   [nil "--auth <USER[:PASSWORD]>" "Basic auth"]
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
@@ -375,6 +410,7 @@
       (let [port (if (not (empty? arguments))
                    (Integer/parseInt (first arguments))
                    (:port options))
+            basic-auth (when-let [auth (:auth options)] (parse-auth auth))
             bind-address (:bind options)
             compress? (not (:no-compression options))
             handler (->> (partial file-handler (select-keys options [:no-index
@@ -389,6 +425,7 @@
                          inject-mime-type
                          inject-server-name
                          inject-content-length
+                         (maybe-inject-auth basic-auth)
                          wrap-logging)
             s (http/start-server handler {:port port
                                           :compression? compress?

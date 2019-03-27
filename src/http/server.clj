@@ -407,37 +407,42 @@
         (System/exit 0))
 
       :else
-      (let [port (if (not (empty? arguments))
-                   (Integer/parseInt (first arguments))
-                   (:port options))
-            basic-auth (when-let [auth (:auth options)] (parse-auth auth))
-            bind-address (:bind options)
-            compress? (not (:no-compression options))
-            handler (->> (partial file-handler (select-keys options [:no-index
-                                                                     :follow-symlink
-                                                                     :include-hidden]))
-                         (wrap-cors (when (true? (:cors options))
-                                      {:origin (:cors-origin options)
-                                       :methods (:cors-methods options)
+      (try
+        (let [port (if (not (empty? arguments))
+                     (Integer/parseInt (first arguments))
+                     (:port options))
+              basic-auth (when-let [auth (:auth options)]
+                           (parse-auth auth))
+              bind-address (:bind options)
+              compress? (not (:no-compression options))
+              handler (->> (partial file-handler (select-keys options [:no-index
+                                                                       :follow-symlink
+                                                                       :include-hidden]))
+                           (wrap-cors (when (true? (:cors options))
+                                        {:origin (:cors-origin options)
+                                         :methods (:cors-methods options)
                                        :headers (:cors-allow-headers options)}))
-                         parse-accept
-                         (wrap-if-modified (:no-cache options))
-                         inject-mime-type
-                         inject-server-name
-                         inject-content-length
-                         (maybe-inject-auth basic-auth)
-                         wrap-logging)
-            s (http/start-server handler {:port port
-                                          :compression? compress?
-                                          ;; file operations are blocking,
-                                          ;; nevertheless the directory listing
-                                          ;; is fast enough to be done on I/O
-                                          ;; threads and reading/sending files
-                                          ;; is performed either using zero-copy
-                                          ;; or streaming with a relatively small
-                                          ;; chunks size. meaning... we don't need
-                                          ;; a separate executor here.
-                                          :executor :none})]
-        (log/infof "Serving HTTP on %s port %s" bind-address port)
-        (reset! server s)
-        s))))
+                           parse-accept
+                           (wrap-if-modified (:no-cache options))
+                           inject-mime-type
+                           inject-server-name
+                           inject-content-length
+                           (maybe-inject-auth basic-auth)
+                           wrap-logging)
+              s (http/start-server handler {:port port
+                                            :compression? compress?
+                                            ;; file operations are blocking,
+                                            ;; nevertheless the directory listing
+                                            ;; is fast enough to be done on I/O
+                                            ;; threads and reading/sending files
+                                            ;; is performed either using zero-copy
+                                            ;; or streaming with a relatively small
+                                            ;; chunks size. meaning... we don't need
+                                            ;; a separate executor here.
+                                            :executor :none})]
+          (log/infof "Serving HTTP on %s port %s" bind-address port)
+          (reset! server s)
+          s)
+        (catch Exception e
+          (log/errorf "Something when wrong: %s" (.getMessage ^Exception e))
+          (System/exit 1))))))

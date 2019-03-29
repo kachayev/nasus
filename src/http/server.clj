@@ -218,11 +218,13 @@
      :body body}))
 
 (defn matches-glob? [file glob]
-  (.matches
-   (.getPathMatcher
-    (java.nio.file.FileSystems/getDefault)
-    (str "glob:" "**/nasus/"  glob))
-   (.toPath file)))
+  (let [cwd (System/getProperty "user.dir")
+        glob (str cwd "/" glob)]
+    (.matches
+     (.getPathMatcher
+      (java.nio.file.FileSystems/getDefault)
+      (str "glob:" glob))
+     (.toPath file))))
 
 ;; note, that mime types and cache headers will be
 ;; injected by appropriate middlewares later on
@@ -384,7 +386,12 @@
    ["-b" "--bind <IP>" "Address to bind to"
     :default default-bind]
    [nil "--auth <USER[:PASSWORD]>" "Basic auth"]
-   [nil "--exclude <GLOB>" "Exclude certain file-paths"]
+   [nil "--exclude <GLOB>" (str "Exclude certain file-paths specified by either "
+                                "a single glob, or whitespace delimited series of globs:\n"
+                                "\"target/*\"  -> direct descendants of target\n"
+                                "\"target/**\" -> all descendants of target\n"
+                                "\"target/* **.txt\" -> direct descendants of target "
+                                "and all .txt files")]
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]

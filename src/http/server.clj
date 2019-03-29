@@ -217,17 +217,25 @@
      :headers {"content-type" (str content-type "; charset=UTF-8")}
      :body body}))
 
+(defn matches-glob? [file glob]
+  (.matches
+   (.getPathMatcher
+    (java.nio.file.FileSystems/getDefault)
+    (str "glob:" "**/nasus/"  glob))
+   (.toPath file)))
+
 ;; note, that mime types and cache headers will be
 ;; injected by appropriate middlewares later on
 (defn reply-with-file [file]
   {:status 200
    :body file})
 
-(defn file-handler [{:keys [no-index follow-symlink include-hidden]}
+(defn file-handler [{:keys [no-index exclude follow-symlink include-hidden]}
                     {:keys [request-method uri headers] :as req}]
   (if (not= :get request-method)
     method-not-allowed
-    (let [path (sanitize-uri uri)]
+    (let [path (sanitize-uri uri)
+          globs (str/split exclude #" ")]
       (if (nil? path)
         forbidden
         (let [file (io/file path)]
@@ -255,6 +263,9 @@
 
             (not (.isFile file))
             forbidden
+
+            (some (partial matches-glob? file) globs)
+            not-found
 
             :else
             (reply-with-file file)))))))
@@ -373,6 +384,7 @@
    ["-b" "--bind <IP>" "Address to bind to"
     :default default-bind]
    [nil "--auth <USER[:PASSWORD]>" "Basic auth"]
+   [nil "--exclude <GLOB>" "Exclude certain file-paths"]
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
@@ -417,7 +429,8 @@
               compress? (not (:no-compression options))
               handler (->> (partial file-handler (select-keys options [:no-index
                                                                        :follow-symlink
-                                                                       :include-hidden]))
+                                                                       :include-hidden
+                                                                       :exclude]))
                            (wrap-cors (when (true? (:cors options))
                                         {:origin (:cors-origin options)
                                          :methods (:cors-methods options)

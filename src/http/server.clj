@@ -8,7 +8,7 @@
             [clojure.tools.logging :as log]
             [clojure.tools.cli :as cli])
   (:import [java.io File IOException]
-           [java.nio.file Files Path]
+           [java.nio.file Files Path FileSystems]
            [java.net URLDecoder]
            [java.util Date Locale TimeZone]
            [java.text SimpleDateFormat]
@@ -175,13 +175,24 @@
   {:status (.code HttpResponseStatus/FOUND)
    :headers {"location" new-location}})
 
-(defn dir-listing [directory follow-symlink? include-hidden?]
+(defn matches-glob? [file]
+  (let [cwd (System/getProperty "user.dir")
+        fs (FileSystems/getDefault)]
+    (fn [glob]
+      (.matches
+       (.getPathMatcher
+        fs
+        (str "glob:" cwd "/" glob))
+       (.toPath file)))))
+
+(defn dir-listing [directory excluded-globs follow-symlink? include-hidden?]
   (for [file (.listFiles directory)
         :when (and (.canRead file)
                    (or follow-symlink?
                        (not (symlink? file)))
                    (or include-hidden?
-                       (not (.isHidden file))))]
+                       (not (.isHidden file)))
+                   (not (some (matches-glob? file) excluded-globs)))]
     (.getName file)))
 
 (defn render-text [listing]
@@ -208,8 +219,9 @@
          "<hr/>\r\n")))
 
 ;; todo(kachayev): preaggregate directories upfront
-(defn reply-with-listing [{:keys [uri] :as req} file follow-symlink? include-hidden?]
-  (let [listing (sort (dir-listing file follow-symlink? include-hidden?))
+(defn reply-with-listing
+  [{:keys [uri] :as req} file excluded-globs follow-symlink? include-hidden?]
+  (let [listing (sort (dir-listing file excluded-globs follow-symlink? include-hidden?))
         [content-type body] (if (accept? "text/html" req)
                               ["text/html" (render-html uri listing)]
                               ["text/plain" (render-text listing)])]
@@ -223,11 +235,12 @@
   {:status 200
    :body file})
 
-(defn file-handler [{:keys [no-index follow-symlink include-hidden]}
+(defn file-handler [{:keys [no-index exclude follow-symlink include-hidden]}
                     {:keys [request-method uri headers] :as req}]
   (if (not= :get request-method)
     method-not-allowed
-    (let [path (sanitize-uri uri)]
+    (let [path (sanitize-uri uri)
+          excluded-globs (when exclude (str/split exclude #" "))]
       (if (nil? path)
         forbidden
         (let [file (io/file path)]
@@ -248,7 +261,7 @@
 
             (and (.isDirectory file)
                  (str/ends-with? uri "/"))
-            (reply-with-listing req file follow-symlink include-hidden)
+            (reply-with-listing req file excluded-globs follow-symlink include-hidden)
 
             (.isDirectory file)
             (reply-with-redirect (str uri "/"))
@@ -373,6 +386,12 @@
    ["-b" "--bind <IP>" "Address to bind to"
     :default default-bind]
    [nil "--auth <USER[:PASSWORD]>" "Basic auth"]
+   [nil "--exclude <GLOB>" (str "Exclude certain file-paths specified by either "
+                                "a single glob, or whitespace delimited series of globs:\n"
+                                "\"target/*\"  -> direct descendants of target\n"
+                                "\"target/**\" -> all descendants of target\n"
+                                "\"target/* **.txt\" -> direct descendants of target "
+                                "and all .txt files")]
    [nil "--no-index" "Disable directory listings" :default false]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
@@ -417,7 +436,8 @@
               compress? (not (:no-compression options))
               handler (->> (partial file-handler (select-keys options [:no-index
                                                                        :follow-symlink
-                                                                       :include-hidden]))
+                                                                       :include-hidden
+                                                                       :exclude]))
                            (wrap-cors (when (true? (:cors options))
                                         {:origin (:cors-origin options)
                                          :methods (:cors-methods options)

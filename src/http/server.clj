@@ -315,7 +315,7 @@
     handler
     (let [allowed-headers (:headers settings)
           cors-headers
-          (cond-> {"Access-Control-Allow-Origin" (get settings :orgiin "*")
+          (cond-> {"Access-Control-Allow-Origin" (get settings :origin "*")
                    "Access-Control-Allow-Methods" (get settings :methods "GET, POST")
                    "Access-Control-Allow-Credentials" "true"}
             (some? allowed-headers)

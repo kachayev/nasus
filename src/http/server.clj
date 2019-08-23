@@ -22,7 +22,7 @@
 
 (def default-http-cache-seconds 60)
 
-(def user-dir (SystemPropertyUtil/get "user.dir"))
+(declare user-dir)
 
 (defonce server (atom nil))
 
@@ -385,6 +385,10 @@
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
    ["-b" "--bind <IP>" "Address to bind to"
     :default default-bind]
+   [nil "--dir <DIR>" "Directory to serve the files"
+    :default (SystemPropertyUtil/get "user.dir")
+    :parse-fn #(.getCanonicalFile (File. %))
+    :validate [#(.isDirectory %) "Must be an existing directory"]]
    [nil "--auth <USER[:PASSWORD]>" "Basic auth"]
    [nil "--exclude <GLOB>" (str "Exclude certain file-paths specified by either "
                                 "a single glob, or whitespace delimited series of globs:\n"
@@ -441,7 +445,7 @@
                            (wrap-cors (when (true? (:cors options))
                                         {:origin (:cors-origin options)
                                          :methods (:cors-methods options)
-                                       :headers (:cors-allow-headers options)}))
+                                         :headers (:cors-allow-headers options)}))
                            parse-accept
                            (wrap-if-modified (:no-cache options))
                            inject-mime-type
@@ -460,6 +464,7 @@
                                             ;; chunks size. meaning... we don't need
                                             ;; a separate executor here.
                                             :executor :none})]
+          (def user-dir (:dir options))
           (log/infof "Serving HTTP on %s port %s" bind-address port)
           (reset! server s)
           s)

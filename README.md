@@ -37,6 +37,7 @@ In development:
 ```
   -p, --port <PORT>         8000     Port number
   -b, --bind <IP>           0.0.0.0  Address to bind to
+      --dir <PATH>          ./       Directory to serve files
       --auth <USER[:PASSWORD]>       Basic auth
       --no-index                     Disable directory listings
       --no-cache                     Disable cache headers

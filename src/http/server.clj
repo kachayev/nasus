@@ -22,8 +22,6 @@
 
 (def default-http-cache-seconds 60)
 
-(declare user-dir)
-
 (defonce server (atom nil))
 
 (def error-headers {"content-type" "text/plain; charset=UTF-8"
@@ -160,7 +158,7 @@
        (not (str/ends-with? uri "."))
        (nil? (re-matches insecure-uri uri))))
 
-(defn sanitize-uri [uri]
+(defn sanitize-uri [user-dir uri]
   (let [uri (URLDecoder/decode uri "UTF-8")]
     (when (and (not (str/blank? uri))
                (str/starts-with? uri "/"))
@@ -235,11 +233,11 @@
   {:status 200
    :body file})
 
-(defn file-handler [{:keys [no-index exclude follow-symlink include-hidden]}
+(defn file-handler [{:keys [no-index exclude follow-symlink include-hidden dir]}
                     {:keys [request-method uri headers] :as req}]
   (if (not= :get request-method)
     method-not-allowed
-    (let [path (sanitize-uri uri)
+    (let [path (sanitize-uri dir uri)
           excluded-globs (when exclude (str/split exclude #" "))]
       (if (nil? path)
         forbidden
@@ -441,7 +439,8 @@
               handler (->> (partial file-handler (select-keys options [:no-index
                                                                        :follow-symlink
                                                                        :include-hidden
-                                                                       :exclude]))
+                                                                       :exclude
+                                                                       :dir]))
                            (wrap-cors (when (true? (:cors options))
                                         {:origin (:cors-origin options)
                                          :methods (:cors-methods options)
@@ -464,7 +463,6 @@
                                             ;; chunks size. meaning... we don't need
                                             ;; a separate executor here.
                                             :executor :none})]
-          (def user-dir (:dir options))
           (log/infof "Serving HTTP on %s port %s" bind-address port)
           (reset! server s)
           s)

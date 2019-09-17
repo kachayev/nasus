@@ -22,8 +22,6 @@
 
 (def default-http-cache-seconds 60)
 
-(def user-dir (SystemPropertyUtil/get "user.dir"))
-
 (defonce server (atom nil))
 
 (def error-headers {"content-type" "text/plain; charset=UTF-8"
@@ -160,7 +158,7 @@
        (not (str/ends-with? uri "."))
        (nil? (re-matches insecure-uri uri))))
 
-(defn sanitize-uri [uri]
+(defn sanitize-uri [user-dir uri]
   (let [uri (URLDecoder/decode uri "UTF-8")]
     (when (and (not (str/blank? uri))
                (str/starts-with? uri "/"))
@@ -235,11 +233,11 @@
   {:status 200
    :body file})
 
-(defn file-handler [{:keys [no-index exclude follow-symlink include-hidden]}
+(defn file-handler [{:keys [no-index exclude follow-symlink include-hidden dir]}
                     {:keys [request-method uri headers] :as req}]
   (if (not= :get request-method)
     method-not-allowed
-    (let [path (sanitize-uri uri)
+    (let [path (sanitize-uri dir uri)
           excluded-globs (when exclude (str/split exclude #" "))]
       (if (nil? path)
         forbidden
@@ -385,6 +383,10 @@
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
    ["-b" "--bind <IP>" "Address to bind to"
     :default default-bind]
+   [nil "--dir <DIR>" "Directory to serve the files"
+    :default (SystemPropertyUtil/get "user.dir")
+    :parse-fn #(.getCanonicalFile (File. %))
+    :validate [#(.isDirectory %) "Must be an existing directory"]]
    [nil "--auth <USER[:PASSWORD]>" "Basic auth"]
    [nil "--exclude <GLOB>" (str "Exclude certain file-paths specified by either "
                                 "a single glob, or whitespace delimited series of globs:\n"
@@ -437,11 +439,12 @@
               handler (->> (partial file-handler (select-keys options [:no-index
                                                                        :follow-symlink
                                                                        :include-hidden
-                                                                       :exclude]))
+                                                                       :exclude
+                                                                       :dir]))
                            (wrap-cors (when (true? (:cors options))
                                         {:origin (:cors-origin options)
                                          :methods (:cors-methods options)
-                                       :headers (:cors-allow-headers options)}))
+                                         :headers (:cors-allow-headers options)}))
                            parse-accept
                            (wrap-if-modified (:no-cache options))
                            inject-mime-type

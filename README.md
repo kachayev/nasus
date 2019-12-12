@@ -40,6 +40,8 @@ In development:
       --dir <PATH>          ./       Directory to serve files
       --auth <USER[:PASSWORD]>       Basic auth
       --no-index                     Disable directory listings
+      --index                        Return --index-doc instead of a directory listing
+      --index-doc <PATH>             The file to use with --index
       --no-cache                     Disable cache headers
       --no-compression               Disable deflate and gzip compression
       --follow-symlink               Enable symbolic links support

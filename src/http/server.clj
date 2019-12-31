@@ -440,6 +440,8 @@
    [nil "--cors-origin" "Acccess-Control-Allow-Origin response header value" :default "*"]
    [nil "--cors-methods" "Acccess-Control-Allow-Methods response header value" :default "GET, POST"]
    [nil "--cors-allow-headers" "Acccess-Control-Allow-Headers response header value" :default nil]
+   [nil "--default" "Serve --default-doc instead of a directory listing" :default false]
+   [nil "--default-doc <PATH>" "The file to use with --default" :default "index.html"]
    ["-h" "--help"]])
 
 ;; todo(kachayev): list of files to exclude

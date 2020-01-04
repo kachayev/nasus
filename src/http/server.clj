@@ -22,8 +22,6 @@
 
 (def default-http-cache-seconds 60)
 
-(defonce server (atom nil))
-
 (def error-headers {"content-type" "text/plain; charset=UTF-8"
                     "connection" "close"})
 
@@ -370,11 +368,39 @@
        auth
        (str user ":" (password-prompt!))))))
 
-(defn stop []
-  (when-let [s @server]
-    (.close s)
-    (log/info "HTTP server was stopped")
-    (reset! server nil)))
+(defn start [options]
+  (let [handler (->> (partial file-handler (select-keys options [:no-index
+                                                                 :follow-symlink
+                                                                 :include-hidden
+                                                                 :exclude
+                                                                 :dir]))
+                     (wrap-cors (when (true? (:cors options))
+                                  {:origin (:cors-origin options)
+                                   :methods (:cors-methods options)
+                                   :headers (:cors-allow-headers options)}))
+                     parse-accept
+                     (wrap-if-modified (:no-cache options))
+                     inject-mime-type
+                     inject-server-name
+                     inject-content-length
+                     (maybe-inject-auth (:basic-auth options))
+                     wrap-logging)]
+    (http/start-server handler {:port (:port options)
+                                :compression? (:compress? options)
+                                ;; file operations are blocking,
+                                ;; nevertheless the directory listing
+                                ;; is fast enough to be done on I/O
+                                ;; threads and reading/sending files
+                                ;; is performed either using zero-copy
+                                ;; or streaming with a relatively small
+                                ;; chunks size. meaning... we don't need
+                                ;; a separate executor here.
+                                :executor :none})))
+
+(defn stop [server]
+  (when server
+    (.close server)
+    (log/info "HTTP server was stopped")))
 
 (def cli-options
   [["-p" "--port <PORT>" "Port number"
@@ -436,36 +462,11 @@
                            (parse-auth auth))
               bind-address (:bind options)
               compress? (not (:no-compression options))
-              handler (->> (partial file-handler (select-keys options [:no-index
-                                                                       :follow-symlink
-                                                                       :include-hidden
-                                                                       :exclude
-                                                                       :dir]))
-                           (wrap-cors (when (true? (:cors options))
-                                        {:origin (:cors-origin options)
-                                         :methods (:cors-methods options)
-                                         :headers (:cors-allow-headers options)}))
-                           parse-accept
-                           (wrap-if-modified (:no-cache options))
-                           inject-mime-type
-                           inject-server-name
-                           inject-content-length
-                           (maybe-inject-auth basic-auth)
-                           wrap-logging)
-              s (http/start-server handler {:port port
-                                            :compression? compress?
-                                            ;; file operations are blocking,
-                                            ;; nevertheless the directory listing
-                                            ;; is fast enough to be done on I/O
-                                            ;; threads and reading/sending files
-                                            ;; is performed either using zero-copy
-                                            ;; or streaming with a relatively small
-                                            ;; chunks size. meaning... we don't need
-                                            ;; a separate executor here.
-                                            :executor :none})]
+              server (start (merge options {:basic-auth basic-auth
+                                            :port port
+                                            :compress? compress?}))]
           (log/infof "Serving HTTP on %s port %s" bind-address port)
-          (reset! server s)
-          s)
+          server)
         (catch Exception e
           (log/errorf "Something when wrong: %s" (.getMessage ^Exception e))
           (System/exit 1))))))

@@ -105,7 +105,7 @@
 
 (defn parse-if-modified-header [value]
   (let [formatter (http-date-formatter)]
-    (/ (.getTime (.parse formatter value)) 1000.0)))
+    (quot (.getTime (.parse formatter value)) 1000)))
 
 (defn inject-cache-headers [{:keys [body] :as response}]
   (let [last-modified (.lastModified ^File body)
@@ -121,10 +121,10 @@
     (if (str/blank? header)
       (inject-cache-headers response)
       (let [if-modified (parse-if-modified-header header)
-            file-modified (/ (.lastModified ^File body) 1000.0)]
+            file-modified (quot (.lastModified ^File body) 1000)]
         (if (< if-modified file-modified)
-          not-modified
-          (inject-cache-headers response))))))
+          (inject-cache-headers response)
+          not-modified)))))
 
 (defn wrap-if-modified [no-cache? handler]
   (if (true? no-cache?)

@@ -69,5 +69,8 @@
     (let [response @(http/get (url server "/bar.html"))]
       (is (= (-> response :headers :content-type)) "text/html"))))
 
-(comment
-  (macroexpand-1 '(with-nasus [s {}] (println s))))
+(deftest index-document-path-test
+  (with-nasus server {:dir (fs-path (pwd) "test_resources" "dir")
+                      :index-document-path "bar.html"}
+    (let [response @(http/get (url server "/"))]
+      (is (= (body response) "<!DOCTYPE html>\nhello")))))

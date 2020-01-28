@@ -430,7 +430,6 @@
                                 "\"target/* **.txt\" -> direct descendants of target "
                                 "and all .txt files")]
    [nil "--no-index" "Disable directory listings" :default false]
-   [nil "--index-document-path <PATH>" "Respond with <dir>/<PATH> instead of a listing" :default nil]
    [nil "--no-cache" "Disable cache headers" :default false]
    [nil "--no-compression" "Disable deflate and gzip compression" :default false]
    [nil "--follow-symlink" "Enable symbolic links support" :default false]
@@ -440,8 +439,8 @@
    [nil "--cors-origin" "Acccess-Control-Allow-Origin response header value" :default "*"]
    [nil "--cors-methods" "Acccess-Control-Allow-Methods response header value" :default "GET, POST"]
    [nil "--cors-allow-headers" "Acccess-Control-Allow-Headers response header value" :default nil]
-   [nil "--default" "Serve --default-doc instead of a directory listing" :default false]
-   [nil "--default-doc <PATH>" "The file to use with --default" :default "index.html"]
+   [nil "--index-document-path <PATH>" "When requesting some-dir/, respond with some-dir/<PATH> instead of a listing"
+    :default nil]
    ["-h" "--help"]])
 
 ;; todo(kachayev): list of files to exclude

@@ -4,6 +4,8 @@
             [byte-streams :refer [convert]]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
+            [clojure.tools.logging.impl :as log-impl]
             [http.server :as nasus])
   (:import [java.io File]))
 
@@ -27,11 +29,12 @@
   (-> response :body (convert String)))
 
 (defmacro with-nasus [var-name opts & body]
-  `(let [~var-name (nasus/start (merge {:port 0} ~opts))]
-     (try
-       ~@body
-       (finally
-         (nasus/stop ~var-name)))))
+  `(with-redefs [log/*logger-factory* log-impl/disabled-logger-factory]
+     (let [~var-name (nasus/start (merge {:port 0} ~opts))]
+       (try
+         ~@body
+         (finally
+           (nasus/stop ~var-name))))))
 
 ;; tests
 
@@ -39,7 +42,7 @@
   (with-nasus server {:dir (fs-path (pwd) "test_resources" "dir")}
     (let [response @(http/get (url server "/"))]
       (is (= (:status response) 200))
-      (is (= (body response) "bar.html\r\nfoo.txt\r\n")))))
+      (is (= (body response) "bar.html\r\nfoo.txt\r\nsub\r\n")))))
 
 (deftest html-listing-test
   (with-nasus server {:dir (fs-path (pwd) "test_resources" "dir")}
@@ -53,6 +56,7 @@
 <ul>\r
 <li><a href=\"bar.html\">bar.html</a></li>\r
 <li><a href=\"foo.txt\">foo.txt</a></li>\r
+<li><a href=\"sub\">sub</a></li>\r
 </ul>\r
 <hr/>\r
 ")))))
@@ -69,5 +73,12 @@
     (let [response @(http/get (url server "/bar.html"))]
       (is (= (-> response :headers :content-type)) "text/html"))))
 
-(comment
-  (macroexpand-1 '(with-nasus [s {}] (println s))))
+(deftest index-document-path-test
+  (with-nasus server {:dir (fs-path (pwd) "test_resources" "dir")
+                      :index-document-path "bar.html"}
+    (let [response @(http/get (url server "/"))]
+      (is (= (body response) "<!DOCTYPE html>\nbar\n") "returns index document"))
+    (let [response @(http/get (url server "/foo.txt"))]
+      (is (= (body response) "foo\n") "returns explicit file"))
+    (let [response @(http/get (url server "/sub/") {:throw-exceptions false})]
+      (is (= (:status response) 404) "no index doc returns not found"))))

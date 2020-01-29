@@ -231,7 +231,15 @@
   {:status 200
    :body file})
 
-(defn file-handler [{:keys [no-index exclude follow-symlink include-hidden dir]}
+(defn reply-with-listing-or-index [req dir index-document-path excluded-globs follow-symlink include-hidden]
+  (if index-document-path
+    (let [file (io/file (.getPath dir) index-document-path)]
+      (if (and (.exists file) (.isFile file))
+        (reply-with-file file)
+        not-found))
+    (reply-with-listing req dir excluded-globs follow-symlink include-hidden)))
+
+(defn file-handler [{:keys [no-index index-document-path exclude follow-symlink include-hidden dir]}
                     {:keys [request-method uri headers] :as req}]
   (if (not= :get request-method)
     method-not-allowed
@@ -257,7 +265,7 @@
 
             (and (.isDirectory file)
                  (str/ends-with? uri "/"))
-            (reply-with-listing req file excluded-globs follow-symlink include-hidden)
+            (reply-with-listing-or-index req file index-document-path excluded-globs follow-symlink include-hidden)
 
             (.isDirectory file)
             (reply-with-redirect (str uri "/"))
@@ -336,7 +344,7 @@
              ;; we rely on `inject-content-length` being
              ;; invoked earlier :expressionless:
              len (get headers "content-length" "-")]
-         (log/infof "\"%s %s HTTP/1.1\" %s %s" method'  uri status len))
+         (log/infof "\"%s %s HTTP/1.1\" %s %s" method' uri status len))
        response))))
 
 (defn password-prompt! []
@@ -373,7 +381,8 @@
                                                                  :follow-symlink
                                                                  :include-hidden
                                                                  :exclude
-                                                                 :dir]))
+                                                                 :dir
+                                                                 :index-document-path]))
                      (wrap-cors (when (true? (:cors options))
                                   {:origin (:cors-origin options)
                                    :methods (:cors-methods options)
@@ -430,6 +439,8 @@
    [nil "--cors-origin" "Acccess-Control-Allow-Origin response header value" :default "*"]
    [nil "--cors-methods" "Acccess-Control-Allow-Methods response header value" :default "GET, POST"]
    [nil "--cors-allow-headers" "Acccess-Control-Allow-Headers response header value" :default nil]
+   [nil "--index-document-path <PATH>" "When requesting some-dir/, respond with some-dir/<PATH> instead of a listing"
+    :default nil]
    ["-h" "--help"]])
 
 ;; todo(kachayev): list of files to exclude

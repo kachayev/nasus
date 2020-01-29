@@ -344,7 +344,7 @@
              ;; we rely on `inject-content-length` being
              ;; invoked earlier :expressionless:
              len (get headers "content-length" "-")]
-         (log/infof "\"%s %s HTTP/1.1\" %s %s" method'  uri status len))
+         (log/infof "\"%s %s HTTP/1.1\" %s %s" method' uri status len))
        response))))
 
 (defn password-prompt! []

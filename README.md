@@ -7,13 +7,13 @@ Implemented in `Clojure` with [`Aleph`](https://github.com/ztellman/aleph) and [
 Run in the directory you want to serve:
 
 ```shell
-clj -Sdeps '{:deps {nasus {:mvn/version "0.1.5"}}}' -m http.server
+clj -Sdeps '{:deps {nasus {:mvn/version "0.1.7"}}}' -m http.server
 ```
 
 Or specify custom port:
 
 ```shell
-clj -Sdeps '{:deps {nasus {:mvn/version "0.1.5"}}}' -m http.server 8001
+clj -Sdeps '{:deps {nasus {:mvn/version "0.1.7"}}}' -m http.server 8001
 ```
 
 ## Features
@@ -48,7 +48,7 @@ In development:
       --cors-origin                     Acccess-Control-Allow-Origin response header value
       --cors-methods                    Acccess-Control-Allow-Methods response header value
       --cors-allow-headers              Acccess-Control-Allow-Headers response header value
-      --index-document-path <PATH>      When requesting some-dir/, respond with some-dir/<PATH> instead of a listing
+      --index-document-path <PATH>      When requesting "dir/", respond with "dir/<PATH>" instead of a listing
   -h, --help
 ```
 

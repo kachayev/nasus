@@ -54,6 +54,6 @@ In development:
 
 ## License
 
-Copyright © 2019 Nasus
+Copyright © 2020 Nasus
 
 Nasus is licensed under the MIT license, available at MIT and also in the LICENSE file.

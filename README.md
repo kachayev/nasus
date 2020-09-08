@@ -1,3 +1,5 @@
+# Nasus HTTP Server
+
 A simple zero-configuration command-line HTTP files server. Like Python's `SimpleHTTPServer` but scalable. Сan easily handle thousands of simultaneous connections.
 
 Implemented in `Clojure` with [`Aleph`](https://github.com/ztellman/aleph) and [`Netty`](https://github.com/netty/netty). Mostly as an example. It's still skillful and handy tho'. There's even nothing wrong with putting it to production.
